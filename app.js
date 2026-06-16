@@ -404,9 +404,11 @@ function renderSection(doc, title, subtitle, sectionRows, kioskPricing) {
       const row = sectionRows[data.row.index];
       if (!row) return;
       data.cell.styles.fillColor = row.color.fill;
-      // On the "I'll help you find..." sheet, highlight sub-$1 prices yellow.
+      // On the "I'll help you find..." sheet, highlight sub-$1 prices yellow
+      // and reserve room for the "[Bulk Bins]" note drawn in didDrawCell.
       if (!kioskPricing && data.column.index === 4 && row.priceNum !== null && row.priceNum < 1) {
         data.cell.styles.fillColor = [255, 240, 130];
+        data.cell.styles.minCellHeight = Math.max(data.cell.styles.minCellHeight || 0, 9);
       }
       // Reserve height for the 2-column set list drawn in didDrawCell.
       if (data.column.index === 5) {
@@ -415,11 +417,22 @@ function renderSection(doc, title, subtitle, sectionRows, kioskPricing) {
         data.cell.styles.minCellHeight = 4 + lines * SETS_LINE_H + 1.5;
       }
     },
-    // Draw "Printed In Sets" as a 2-column list, one set per line.
+    // Custom drawing: "[Bulk Bins]" under sub-$1 prices, and the 2-column sets.
     didDrawCell: (data) => {
-      if (data.section !== "body" || data.column.index !== 5) return;
+      if (data.section !== "body") return;
       const row = sectionRows[data.row.index];
       if (!row) return;
+
+      // "[Bulk Bins]" note under the highlighted sub-$1 price (find sheet only).
+      if (data.column.index === 4 && !kioskPricing && row.priceNum !== null && row.priceNum < 1) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6);
+        doc.setTextColor(20, 20, 20);
+        doc.text("[Bulk Bins]", data.cell.x + data.cell.width - 2, data.cell.y + 7.5, { align: "right" });
+        return;
+      }
+
+      if (data.column.index !== 5) return;
       const list = row.setList || [];
       doc.setFont("helvetica", "normal");
       doc.setFontSize(SETS_FONT);
