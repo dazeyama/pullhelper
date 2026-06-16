@@ -111,6 +111,14 @@ function hideProgress() {
 }
 
 // ---- Decklist parsing -----------------------------------------------------
+// Basic lands are banned from the output entirely.
+const BASIC_LANDS = new Set(["plains", "island", "swamp", "mountain", "forest"]);
+
+function isBasicLandName(name) {
+  const n = name.toLowerCase();
+  return BASIC_LANDS.has(n) || n.startsWith("snow-covered ") || n === "wastes";
+}
+
 // Accepts lines like "4 Lightning Bolt", "4x Bolt", "Sol Ring",
 // "1 Fire // Ice", "2 Llanowar Elves (M19) 314" (set/collector stripped).
 function parseDecklist(text) {
@@ -130,7 +138,7 @@ function parseDecklist(text) {
     line = line.replace(/\s*[\(\[][A-Za-z0-9]{2,6}[\)\]].*$/, "").trim();
     line = line.replace(/\s*\*[FfeE]\*\s*$/, "").trim();
 
-    if (line) out.push({ qty, name: line });
+    if (line && !isBasicLandName(line)) out.push({ qty, name: line });
   }
   return out;
 }
@@ -269,6 +277,7 @@ function buildRow(entry, card, printsByOracle) {
     rareMythic,
     priceNum: usd,
     price: usd !== null ? "$" + usd.toFixed(2) : "—",
+    setList: boosterNames,
     sets: boosterNames.length ? boosterNames.join(", ") : "—",
   };
 }
@@ -281,6 +290,7 @@ function notFoundRow(entry) {
     rarity: "—",
     rareMythic: false,
     priceNum: null,
+    setList: [],
     sets: "Not found on Scryfall",
   };
 }
@@ -302,7 +312,14 @@ async function gatherRows(entries) {
   const printsByOracle = await fetchPrintsByOracle(oracleIds);
   hideProgress();
 
-  return entries.map((e) => buildRow(e, cardByName.get(e.name.toLowerCase()), printsByOracle));
+  const rows = [];
+  for (const e of entries) {
+    const card = cardByName.get(e.name.toLowerCase());
+    // Catch-all: drop any basic land the name filter missed (e.g. odd casings).
+    if (card && /\bBasic Land\b/.test(card.type_line || "")) continue;
+    rows.push(buildRow(e, card, printsByOracle));
+  }
+  return rows;
 }
 
 // ---- PDF generation -------------------------------------------------------
@@ -313,8 +330,18 @@ function isHighValue(r) {
   return r.rareMythic && r.priceNum !== null && r.priceNum > 2;
 }
 
+// "Try Kiosk" pricing: drop the cents off the number and add $1.
+function kioskPrice(priceNum) {
+  if (priceNum === null || priceNum === undefined) return "—";
+  return "$" + (Math.floor(priceNum) + 1);
+}
+
+const SETS_FONT = 7;     // pt, for the set list
+const SETS_LINE_H = 3.0; // mm, vertical spacing between set lines
+
 // Renders one titled section (one "document") onto the current page.
-function renderSection(doc, title, subtitle, sectionRows) {
+// kioskPricing=true rounds prices up to whole dollars + $1 (Try Kiosk sheet).
+function renderSection(doc, title, subtitle, sectionRows, kioskPricing) {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
   doc.setTextColor(20, 20, 20);
@@ -339,7 +366,14 @@ function renderSection(doc, title, subtitle, sectionRows) {
     return;
   }
 
-  const body = sectionRows.map((r) => [r.color.label, r.qty, r.name, r.rarity, r.price, r.sets]);
+  const body = sectionRows.map((r) => [
+    r.color.label,
+    r.qty,
+    r.name,
+    r.rarity,
+    kioskPricing ? kioskPrice(r.priceNum) : r.price,
+    "", // "Printed In Sets" is custom-drawn (2 columns) in didDrawCell
+  ]);
 
   doc.autoTable({
     head: [["Color", "Qty", "Card Name", "Rarity", "Price (USD)", "Printed In Sets"]],
@@ -349,18 +383,50 @@ function renderSection(doc, title, subtitle, sectionRows) {
     styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak", valign: "top", textColor: [20, 20, 20] },
     headStyles: { fillColor: [40, 44, 52], textColor: [255, 255, 255], fontStyle: "bold" },
     columnStyles: {
-      0: { cellWidth: 22 },
-      1: { cellWidth: 12, halign: "center" },
-      2: { cellWidth: 48, fontStyle: "bold" },
-      3: { cellWidth: 26 },
-      4: { cellWidth: 22, halign: "right" },
+      0: { cellWidth: 18 },
+      1: { cellWidth: 10, halign: "center" },
+      2: { cellWidth: 40, fontStyle: "bold" },
+      3: { cellWidth: 18 },
+      4: { cellWidth: 20, halign: "right" },
       5: { cellWidth: "auto" },
     },
-    // Tint each row with its card color.
     didParseCell: (data) => {
       if (data.section !== "body") return;
       const row = sectionRows[data.row.index];
-      if (row) data.cell.styles.fillColor = row.color.fill;
+      if (!row) return;
+      data.cell.styles.fillColor = row.color.fill;
+      // Reserve height for the 2-column set list drawn in didDrawCell.
+      if (data.column.index === 5) {
+        const n = (row.setList || []).length;
+        const lines = n > 0 ? Math.ceil(n / 2) : 1;
+        data.cell.styles.minCellHeight = 4 + lines * SETS_LINE_H + 1.5;
+      }
+    },
+    // Draw "Printed In Sets" as a 2-column list, one set per line.
+    didDrawCell: (data) => {
+      if (data.section !== "body" || data.column.index !== 5) return;
+      const row = sectionRows[data.row.index];
+      if (!row) return;
+      const list = row.setList || [];
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(SETS_FONT);
+      doc.setTextColor(20, 20, 20);
+
+      if (list.length === 0) {
+        doc.text(row.sets || "—", data.cell.x + 1.5, data.cell.y + 4);
+        return;
+      }
+      const colW = data.cell.width / 2;
+      const maxW = colW - 2.5;
+      for (let i = 0; i < list.length; i++) {
+        const lineIdx = Math.floor(i / 2); // line within the cell
+        const colIdx = i % 2;              // 0 = left column, 1 = right column
+        let nm = list[i];
+        while (nm.length > 1 && doc.getTextWidth(nm) > maxW) nm = nm.slice(0, -2) + "…";
+        const x = data.cell.x + 1.5 + colIdx * colW;
+        const y = data.cell.y + 4 + lineIdx * SETS_LINE_H;
+        doc.text(nm, x, y);
+      }
     },
   });
 }
@@ -368,15 +434,15 @@ function renderSection(doc, title, subtitle, sectionRows) {
 // Builds one combined PDF: high-value Rares/Mythics first, everything else next.
 function buildPdf(name, rows) {
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "letter" });
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "letter" });
 
   const groupA = rows.filter(isHighValue);
   const groupB = rows.filter((r) => !isHighValue(r));
   const sub = name ? `Decklist — ${name}` : "";
 
-  renderSection(doc, "Try Kiosk", sub, groupA);
+  renderSection(doc, "Try Kiosk", sub, groupA, true);
   doc.addPage();
-  renderSection(doc, "I'll help you find...", sub, groupB);
+  renderSection(doc, "I'll help you find...", sub, groupB, false);
 
   return doc;
 }
