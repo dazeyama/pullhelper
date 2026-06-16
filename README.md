@@ -10,13 +10,20 @@ Built to be hosted for free on **GitHub Pages** (`*.github.io`).
 ## Features
 
 - Paste a decklist (one card per line, optional `4 ` / `4x ` quantity prefix).
-- Looks up each card via the [Scryfall API](https://scryfall.com/docs/api)
-  (rate-limited, runs entirely in your browser).
-- Generates a PDF table:
+- Looks up cards via the [Scryfall API](https://scryfall.com/docs/api), entirely
+  in your browser. Uses batched, rate-limited, retrying requests
+  (`/cards/collection` + combined `oracleid:` searches) so 100+ card decklists
+  complete without tripping Scryfall's rate limits.
+- Generates one combined PDF with two stitched sections:
+  1. **Try Kiosk** — Rares/Mythics priced over $2 (first page).
+  2. **I'll help you find...** — everything else (commons, uncommons, and
+     Rares/Mythics $2 or under).
   | Color | Qty | Card Name | Rarity | Price (USD) | Printed In Sets |
   |---|---|---|---|---|---|
   - Each row is tinted with the card's color.
-  - Rare/Mythic cards get a small italic *Try Kiosk* note under the rarity.
+  - The **Printed In Sets** column only lists draft-booster sets (those with >1
+    `is:booster` card), filtering out Commander-only products etc. Two set
+    caches (all sets; booster sets) are persisted in `localStorage`.
 - **Download PDF** — saves to your downloads folder (works out of the box).
 - **Send PDF** — emails the PDF as an attachment (needs the relay below).
 
