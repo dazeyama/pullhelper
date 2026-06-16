@@ -526,6 +526,9 @@ els.download.addEventListener("click", async () => {
 });
 
 // ---- Button: Send ---------------------------------------------------------
+const SEND_COOLDOWN_MS = 30 * 60 * 1000; // one send per 30 minutes
+const LAST_SEND_KEY = "PH_LAST_SEND";
+
 els.send.addEventListener("click", async () => {
   const to = els.email.value.trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
@@ -537,6 +540,15 @@ els.send.addEventListener("click", async () => {
       "Email sending isn't set up yet. Deploy the Google Apps Script relay (see apps-script/Code.gs) and paste its URL into config.js.",
       "err"
     );
+    return;
+  }
+
+  // Rate limit: one send per 30 minutes (persisted so a reload can't bypass it).
+  const lastSend = parseInt(localStorage.getItem(LAST_SEND_KEY) || "0", 10) || 0;
+  const remaining = SEND_COOLDOWN_MS - (Date.now() - lastSend);
+  if (lastSend && remaining > 0) {
+    const mins = Math.ceil(remaining / 60000);
+    setStatus(`Send is limited to once every 30 minutes — try again in ${mins} minute${mins === 1 ? "" : "s"}.`, "err");
     return;
   }
 
@@ -562,6 +574,7 @@ els.send.addEventListener("click", async () => {
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(payload),
     });
+    localStorage.setItem(LAST_SEND_KEY, String(Date.now())); // start the 30-min cooldown
     setStatus(`PDF sent to ${to}. ✓`, "ok");
   } catch (err) {
     setStatus("Send failed: " + err.message, "err");
