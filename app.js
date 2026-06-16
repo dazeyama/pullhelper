@@ -278,7 +278,7 @@ function buildRow(entry, card, printsByOracle) {
     priceNum: usd,
     price: usd !== null ? "$" + usd.toFixed(2) : "—",
     setList: boosterNames,
-    sets: boosterNames.length ? boosterNames.join(", ") : "—",
+    sets: boosterNames.length ? boosterNames.join(", ") : "[Supplementary set only]",
   };
 }
 
