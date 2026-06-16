@@ -1,5 +1,7 @@
 # pullhelper
 
+**🔗 Live app: https://dazeyama.github.io/pullhelper/**
+
 A static web app that turns a pasted Magic: The Gathering decklist into a
 printable PDF — with card colors, quantities, rarity, USD prices, and every set
 each card was printed in. The PDF can be **downloaded** or **emailed** as an
