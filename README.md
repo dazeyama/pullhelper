@@ -1,13 +1,61 @@
 # pullhelper
 
-> _A short description of what pullhelper does goes here._
+A static web app that turns a pasted Magic: The Gathering decklist into a
+printable PDF — with card colors, quantities, rarity, USD prices, and every set
+each card was printed in. The PDF can be **downloaded** or **emailed** as an
+attachment.
 
-## Status
+Built to be hosted for free on **GitHub Pages** (`*.github.io`).
 
-Early scaffolding. Project setup in progress.
+## Features
 
-## Getting started
+- Paste a decklist (one card per line, optional `4 ` / `4x ` quantity prefix).
+- Looks up each card via the [Scryfall API](https://scryfall.com/docs/api)
+  (rate-limited, runs entirely in your browser).
+- Generates a PDF table:
+  | Color | Qty | Card Name | Rarity | Price (USD) | Printed In Sets |
+  |---|---|---|---|---|---|
+  - Each row is tinted with the card's color.
+  - Rare/Mythic cards get a small italic *Try Kiosk* note under the rarity.
+- **Download PDF** — saves to your downloads folder (works out of the box).
+- **Send PDF** — emails the PDF as an attachment (needs the relay below).
 
-```bash
-# instructions to come
+## How it's structured
+
+| File | Purpose |
+|---|---|
+| `index.html` | UI: name, decklist, email, two buttons |
+| `styles.css` | Styling |
+| `app.js` | Parsing, Scryfall queries, PDF build, download/send |
+| `config.js` | Default email + relay URL + Scryfall delay |
+| `apps-script/Code.gs` | Gmail email relay (Google Apps Script) |
+
+## Running locally
+
+It's a static site — just serve the folder:
+
+```powershell
+python -m http.server 8080
+# then open http://localhost:8080
 ```
+
+(Opening `index.html` directly via `file://` also works, but a local server
+avoids browser quirks.)
+
+## Email sending setup (one-time)
+
+GitHub Pages can't send email on its own. The **Send PDF** button POSTs the PDF
+to a tiny Google Apps Script web app that sends it from your Gmail.
+
+1. Open `apps-script/Code.gs` and follow the deploy steps at the top.
+2. Copy the deployed web-app URL.
+3. Paste it into `config.js` as `RELAY_ENDPOINT`.
+4. Commit & push.
+
+Deploy the script under **playersuniongamecoop@gmail.com** so emails come from
+that address.
+
+## Deploying to GitHub Pages
+
+Pages serves the repo root. Once enabled, the app lives at
+`https://dazeyama.github.io/pullhelper/`.

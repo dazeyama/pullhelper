@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pullhelper — Decklist PDF</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="card">
+    <header>
+      <h1>pullhelper</h1>
+      <p class="sub">Paste a decklist &rarr; get a printable PDF with colors, prices &amp; printings.</p>
+    </header>
+
+    <label class="field">
+      <span class="field-label">Your name</span>
+      <input id="name" type="text" placeholder="e.g. Daisy" autocomplete="name" />
+    </label>
+
+    <label class="field">
+      <span class="field-label">Decklist <small>(one card per line, optional quantity prefix like <code>4 Lightning Bolt</code>)</small></span>
+      <textarea id="decklist" rows="14" spellcheck="false" placeholder="4 Lightning Bolt&#10;2 Counterspell&#10;1 Sol Ring&#10;Llanowar Elves"></textarea>
+    </label>
+
+    <label class="field">
+      <span class="field-label">Send to email</span>
+      <input id="email" type="email" autocomplete="email" />
+    </label>
+
+    <div class="buttons">
+      <button id="downloadBtn" class="btn primary">Download PDF</button>
+      <button id="sendBtn" class="btn">Send PDF</button>
+    </div>
+
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+    <div class="progress-wrap" id="progressWrap" hidden>
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+  </main>
+
+  <footer class="foot">
+    Card data &amp; prices from <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>.
+    Not affiliated with Wizards of the Coast.
+  </footer>
+
+  <!-- jsPDF + autotable for client-side PDF generation -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
