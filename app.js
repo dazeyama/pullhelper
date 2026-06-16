@@ -134,7 +134,7 @@ async function lookupCard(entry) {
       : { sets: [], cheapestUsd: null };
     const color = colorInfoFromCard(card);
     const rarity = (card.rarity || "").replace(/^\w/, (c) => c.toUpperCase());
-    const kiosk = card.rarity === "rare" || card.rarity === "mythic";
+    const rareMythic = card.rarity === "rare" || card.rarity === "mythic";
 
     // Prefer the named printing's price; fall back to the cheapest printing.
     let usd = card.prices && card.prices.usd ? parseFloat(card.prices.usd) : null;
@@ -145,7 +145,8 @@ async function lookupCard(entry) {
       qty: String(entry.qty),
       name: card.name,
       rarity,
-      kiosk,
+      rareMythic,
+      priceNum: usd,
       price: usd !== null ? "$" + usd.toFixed(2) : "—",
       sets: prints.sets.length ? prints.sets.join(", ") : "—",
     };
@@ -160,7 +161,8 @@ function notFoundRow(entry) {
     qty: String(entry.qty),
     name: entry.name,
     rarity: "—",
-    kiosk: false,
+    rareMythic: false,
+    priceNum: null,
     price: "—",
     sets: "Not found on Scryfall",
   };
@@ -180,23 +182,30 @@ async function gatherRows(entries) {
 }
 
 // ---- PDF generation -------------------------------------------------------
-function buildPdf(name, rows) {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "letter" });
+// A card is "high value" if it's a Rare/Mythic priced strictly above $2.
+// Everything else (commons, uncommons, and cheap/unpriced rares & mythics)
+// goes in the second document.
+function isHighValue(r) {
+  return r.rareMythic && r.priceNum !== null && r.priceNum > 2;
+}
 
-  const title = name ? `Decklist — ${name}` : "Decklist";
+// Renders one titled section (one "document") onto the current page.
+function renderSection(doc, title, sectionRows) {
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
+  doc.setFontSize(15);
+  doc.setTextColor(20, 20, 20);
   doc.text(title, 14, 16);
 
-  const body = rows.map((r) => [
-    r.color.label,
-    r.qty,
-    r.name,
-    r.rarity,
-    r.price,
-    r.sets,
-  ]);
+  if (sectionRows.length === 0) {
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(11);
+    doc.setTextColor(120, 120, 120);
+    doc.text("None.", 14, 26);
+    doc.setTextColor(20, 20, 20);
+    return;
+  }
+
+  const body = sectionRows.map((r) => [r.color.label, r.qty, r.name, r.rarity, r.price, r.sets]);
 
   doc.autoTable({
     head: [["Color", "Qty", "Card Name", "Rarity", "Price (USD)", "Printed In Sets"]],
@@ -213,28 +222,27 @@ function buildPdf(name, rows) {
       4: { cellWidth: 22, halign: "right" },
       5: { cellWidth: "auto" },
     },
-    // Tint each row with its card color, and reserve height for "Try Kiosk".
+    // Tint each row with its card color.
     didParseCell: (data) => {
       if (data.section !== "body") return;
-      const row = rows[data.row.index];
-      if (!row) return;
-      data.cell.styles.fillColor = row.color.fill;
-      if (row.kiosk && data.column.index === 3) {
-        data.cell.styles.minCellHeight = 11;
-      }
-    },
-    // Draw the italic "Try Kiosk" note under the rarity for rares/mythics.
-    didDrawCell: (data) => {
-      if (data.section !== "body" || data.column.index !== 3) return;
-      const row = rows[data.row.index];
-      if (!row || !row.kiosk) return;
-      doc.setFont("helvetica", "italic");
-      doc.setFontSize(6.5);
-      doc.setTextColor(90, 90, 90);
-      doc.text("Try Kiosk", data.cell.x + 2, data.cell.y + data.cell.height - 2.5);
-      doc.setTextColor(20, 20, 20);
+      const row = sectionRows[data.row.index];
+      if (row) data.cell.styles.fillColor = row.color.fill;
     },
   });
+}
+
+// Builds one combined PDF: high-value Rares/Mythics first, everything else next.
+function buildPdf(name, rows) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "letter" });
+
+  const groupA = rows.filter(isHighValue);
+  const groupB = rows.filter((r) => !isHighValue(r));
+  const base = name ? `Decklist — ${name}` : "Decklist";
+
+  renderSection(doc, `${base} · Rares & Mythics over $2`, groupA);
+  doc.addPage();
+  renderSection(doc, `${base} · Commons, Uncommons & Rares/Mythics $2 or under`, groupB);
 
   return doc;
 }
