@@ -22,8 +22,9 @@ Built to be hosted for free on **GitHub Pages** (`*.github.io`).
   |---|---|---|---|---|---|
   - Each row is tinted with the card's color.
   - The **Printed In Sets** column only lists draft-booster sets (those with >1
-    `is:booster` card), filtering out Commander-only products etc. Two set
-    caches (all sets; booster sets) are persisted in `localStorage`.
+    `is:booster` card), filtering out Commander-only products etc. This list is
+    **precomputed** into `booster-sets.json` and loaded as a static file — the
+    app never queries per-set booster status at runtime.
 - **Download PDF** — saves to your downloads folder (works out of the box).
 - **Send PDF** — emails the PDF as an attachment (needs the relay below).
 
@@ -35,7 +36,19 @@ Built to be hosted for free on **GitHub Pages** (`*.github.io`).
 | `styles.css` | Styling |
 | `app.js` | Parsing, Scryfall queries, PDF build, download/send |
 | `config.js` | Default email + relay URL + Scryfall delay |
+| `booster-sets.json` | Precomputed list of draft-booster sets (loaded at startup) |
+| `tools/build_booster_sets.py` | Regenerates `booster-sets.json` from Scryfall |
 | `apps-script/Code.gs` | Gmail email relay (Google Apps Script) |
+
+## Refreshing the booster-set list
+
+`booster-sets.json` is a static snapshot, so the app loads instantly and never
+hammers Scryfall. Refresh it only when you want to pick up newly released sets:
+
+```powershell
+python tools/build_booster_sets.py
+# then commit the updated booster-sets.json
+```
 
 ## Running locally
 

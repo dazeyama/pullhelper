@@ -21,83 +21,27 @@ const els = {
 
 els.email.value = CFG.DEFAULT_EMAIL;
 
-// ---- Set caches -----------------------------------------------------------
-// Two persistent caches, per spec:
-//   allSets     : code -> {name, type, card_count}, every set in Magic (/sets).
-//   boosterSets : code -> bool, true when `set:CODE is:booster` has >1 cards.
-// The "Printed In Sets" column only shows sets where boosterSets[code] is true,
-// which filters out sets with no real draft-booster presence (e.g. most
-// Commander products). boosterSets grows lazily and is remembered across runs.
-const SETS_KEY = "PH_ALL_SETS_V2";
-const BOOSTER_KEY = "PH_BOOSTER_SETS_V1";
-let allSets = {};
+// ---- Booster-set list (precomputed, local) --------------------------------
+// boosterSets: code -> set name, for every set with >1 `is:booster` card.
+// This is loaded ONCE from the static booster-sets.json shipped with the app —
+// NOT queried per set at runtime. The "Printed In Sets" column shows only the
+// sets present here, filtering out Commander-only products etc. Refresh the
+// data by running tools/build_booster_sets.py (only when you want to update).
 let boosterSets = {};
+let boosterLoaded = false;
 
-function loadCaches() {
-  try { allSets = JSON.parse(localStorage.getItem(SETS_KEY)) || {}; } catch (e) { allSets = {}; }
-  try { boosterSets = JSON.parse(localStorage.getItem(BOOSTER_KEY)) || {}; } catch (e) { boosterSets = {}; }
-}
-loadCaches();
-
-// Cache #1 — every set in Magic. Fetched once, then served from localStorage.
-async function ensureAllSets() {
-  if (Object.keys(allSets).length) return;
-  const res = await scryfallFetch("https://api.scryfall.com/sets");
-  if (!res || !res.ok) return;
-  const data = await res.json();
-  for (const s of data.data || []) {
-    allSets[s.code] = { name: s.name, type: s.set_type, card_count: s.card_count };
+const boosterReady = (async () => {
+  try {
+    const res = await fetch("./booster-sets.json", { cache: "no-cache" });
+    if (res.ok) {
+      const data = await res.json();
+      boosterSets = data.sets || {};
+      boosterLoaded = true;
+    }
+  } catch (e) {
+    // If the file is missing/unreadable we fall back to showing all sets.
   }
-  try { localStorage.setItem(SETS_KEY, JSON.stringify(allSets)); } catch (e) { /* ignore */ }
-}
-
-function setName(code, fallback) {
-  return (allSets[code] && allSets[code].name) || fallback || code;
-}
-
-// Sets that can't possibly satisfy ">1 draft-booster card" — skip the request.
-function cannotHaveBoosters(code) {
-  const meta = allSets[code];
-  if (!meta) return false;
-  if ((meta.card_count || 0) <= 1) return true;
-  // Commander products never carry draft boosters (the draftable "Commander"
-  // sets like Commander Masters / Commander Legends use other set_types).
-  return meta.type === "commander";
-}
-
-// Cache #2 — does this set have >1 draft-booster card? Queried once per code.
-async function ensureBoosterStatus(code) {
-  if (code in boosterSets) return boosterSets[code];
-  if (cannotHaveBoosters(code)) {
-    boosterSets[code] = false;
-    return false;
-  }
-  let qualifies = false;
-  const q = encodeURIComponent(`set:${code} is:booster`);
-  const res = await scryfallFetch("https://api.scryfall.com/cards/search?q=" + q + "&unique=cards");
-  if (res && res.ok) {
-    const data = await res.json();
-    qualifies = (data.total_cards || 0) > 1;
-  }
-  // A 404 (or null after retries) means no booster cards -> stays false.
-  boosterSets[code] = qualifies;
-  return qualifies;
-}
-
-// Resolve (and cache) booster status for a batch of set codes, with progress.
-async function resolveBoosterSets(codes) {
-  const unknown = codes.filter((c) => !(c in boosterSets));
-  const need = unknown.filter((c) => !cannotHaveBoosters(c));
-  unknown.forEach((c) => { if (cannotHaveBoosters(c)) boosterSets[c] = false; });
-  for (let i = 0; i < need.length; i++) {
-    setStatus(`Checking booster sets ${i + 1} of ${need.length}…`);
-    showProgress(i / Math.max(need.length, 1));
-    await ensureBoosterStatus(need[i]);
-  }
-  if (unknown.length) {
-    try { localStorage.setItem(BOOSTER_KEY, JSON.stringify(boosterSets)); } catch (e) { /* ignore */ }
-  }
-}
+})();
 
 // ---- Color palette (light tints so black text stays readable) -------------
 const COLOR_STYLES = {
@@ -311,8 +255,11 @@ function buildRow(entry, card, printsByOracle) {
   let usd = card.prices && card.prices.usd ? parseFloat(card.prices.usd) : null;
   if (usd === null) usd = pr.cheapestUsd;
 
-  // Show only sets with real draft-booster presence.
-  const boosterNames = pr.sets.filter((p) => boosterSets[p.code]).map((p) => setName(p.code, p.name));
+  // Show only sets with real draft-booster presence (from the local list). If
+  // the list failed to load, fall back to showing every printing's set.
+  const boosterNames = pr.sets
+    .filter((p) => !boosterLoaded || boosterSets[p.code])
+    .map((p) => boosterSets[p.code] || p.name);
 
   return {
     color,
@@ -353,10 +300,6 @@ async function gatherRows(entries) {
   const cards = [...new Set([...cardByName.values()])];
   const oracleIds = [...new Set(cards.map((c) => c.oracle_id).filter(Boolean))];
   const printsByOracle = await fetchPrintsByOracle(oracleIds);
-
-  // Booster status for every set that shows up across those printings.
-  const codes = [...new Set([].concat(...[...printsByOracle.values()].map((v) => v.sets.map((s) => s.code))))];
-  await resolveBoosterSets(codes);
   hideProgress();
 
   return entries.map((e) => buildRow(e, cardByName.get(e.name.toLowerCase()), printsByOracle));
@@ -448,7 +391,7 @@ async function generate() {
   els.download.disabled = true;
   els.send.disabled = true;
   try {
-    await ensureAllSets();
+    await boosterReady; // ensure the local booster-set list is loaded
     const rows = await gatherRows(entries);
     setStatus("Building PDF…");
     const doc = buildPdf(els.name.value.trim(), rows);
