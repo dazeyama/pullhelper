@@ -380,6 +380,7 @@ function renderSection(doc, title, subtitle, sectionRows, kioskPricing) {
     body,
     startY: tableTop,
     margin: { left: 14, right: 14 },
+    rowPageBreak: "avoid", // keep each row whole; move it to the next page rather than splitting
     styles: {
       fontSize: 8,
       cellPadding: 2,
