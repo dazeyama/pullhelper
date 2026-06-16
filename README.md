@@ -21,8 +21,9 @@ Built to be hosted for free on **GitHub Pages** (`*.github.io`).
   | Color | Qty | Card Name | Rarity | Price (USD) | Printed In Sets |
   |---|---|---|---|---|---|
   - Each row is tinted with the card's color.
-  - The **Printed In Sets** column only lists draft-booster sets (those with >1
-    `is:booster` card), filtering out Commander-only products etc. This list is
+  - The **Printed In Sets** column only lists paper draft-booster sets (those
+    with >1 `is:booster game:paper` card), filtering out Commander-only products
+    and digital-only sets (e.g. Jumpstart: Historic Horizons). This list is
     **precomputed** into `booster-sets.json` and loaded as a static file — the
     app never queries per-set booster status at runtime.
 - **Download PDF** — saves to your downloads folder (works out of the box).

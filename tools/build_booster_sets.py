@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build booster-sets.json — every Magic set with >1 `is:booster` card.
+"""Build booster-sets.json — every Magic set with >1 `is:booster game:paper` card.
 
 Run this ONLY when you want to refresh the cached list (e.g. after a new set
 releases). It queries Scryfall once per plausible set and writes the result to
@@ -47,9 +47,11 @@ def get(url):
     return False, None  # exhausted retries -> failed, retry later
 
 
-# Query one set's `is:booster` count. Returns True/False, or None if it failed.
+# Query one set's paper `is:booster` count. Returns True/False, or None if it
+# failed. `game:paper` excludes digital-only sets (e.g. Jumpstart: Historic
+# Horizons) that have booster cards only on Arena/MTGO.
 def booster_count_gt1(code):
-    q = urllib.parse.quote(f"set:{code} is:booster")
+    q = urllib.parse.quote(f"set:{code} is:booster game:paper")
     ok, sd = get(f"https://api.scryfall.com/cards/search?q={q}&unique=cards")
     if not ok:
         return None
