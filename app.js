@@ -584,8 +584,17 @@ function loadKioskNames() {
   try { return JSON.parse(localStorage.getItem(KIOSK_NAMES_KEY)) || []; } catch (e) { return []; }
 }
 
-// Reveal the button on load if a previous session already cached some names.
-if (loadKioskNames().length) els.bulkSearch.hidden = false;
+// Drop the cached names and hide the button (the cache is tied to a specific
+// generated PDF, so editing the decklist or reloading invalidates it).
+function clearKioskNames() {
+  try { localStorage.removeItem(KIOSK_NAMES_KEY); } catch (e) { /* ignore */ }
+  els.bulkSearch.hidden = true;
+}
+
+// Start every page load with the button hidden and no stale cache, and clear it
+// whenever the decklist text changes.
+clearKioskNames();
+els.decklist.addEventListener("input", clearKioskNames);
 
 els.bulkSearch.addEventListener("click", () => {
   const names = loadKioskNames();
