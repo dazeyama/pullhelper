@@ -336,6 +336,12 @@ function kioskPrice(priceNum) {
   return "~$" + (Math.floor(priceNum) + 1);
 }
 
+// "I'll help you find..." pricing: the Scryfall price plus a flat $0.35.
+function findPrice(priceNum) {
+  if (priceNum === null || priceNum === undefined) return "—";
+  return "~$" + (priceNum + 0.35).toFixed(2);
+}
+
 const SETS_FONT = 7;     // pt, for the set list
 const SETS_LINE_H = 3.0; // mm, vertical spacing between set lines
 
@@ -371,7 +377,7 @@ function renderSection(doc, title, subtitle, sectionRows, kioskPricing) {
     r.qty,
     r.name,
     r.rarity,
-    kioskPricing ? kioskPrice(r.priceNum) : r.price,
+    kioskPricing ? kioskPrice(r.priceNum) : findPrice(r.priceNum),
     "", // "Printed In Sets" is custom-drawn (2 columns) in didDrawCell
   ]);
 
