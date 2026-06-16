@@ -14,6 +14,7 @@ const els = {
   email: document.getElementById("email"),
   download: document.getElementById("downloadBtn"),
   send: document.getElementById("sendBtn"),
+  bulkSearch: document.getElementById("bulkSearchBtn"),
   status: document.getElementById("status"),
   progressWrap: document.getElementById("progressWrap"),
   progressBar: document.getElementById("progressBar"),
@@ -500,6 +501,7 @@ async function generate() {
   try {
     await boosterReady; // ensure the local booster-set list is loaded
     const rows = await gatherRows(entries);
+    cacheKioskNames(rows); // stash Try Kiosk card names for the bulk-search button
     setStatus("Building PDF…");
     const doc = buildPdf(els.name.value.trim(), rows);
     return doc;
@@ -564,4 +566,33 @@ els.send.addEventListener("click", async () => {
   } catch (err) {
     setStatus("Send failed: " + err.message, "err");
   }
+});
+
+// ---- Bulk search (Try Kiosk cards on the store) ---------------------------
+const KIOSK_NAMES_KEY = "PH_KIOSK_NAMES";
+const MULTI_SEARCH_URL = "https://playersuniongames.crystalcommerce.com/products/multi_search";
+
+// Cache just the plaintext names from the Try Kiosk page (Rares/Mythics > $2),
+// in the same price-desc order, and reveal the bulk-search button.
+function cacheKioskNames(rows) {
+  const names = rows.filter(isHighValue).sort((a, b) => b.priceNum - a.priceNum).map((r) => r.name);
+  try { localStorage.setItem(KIOSK_NAMES_KEY, JSON.stringify(names)); } catch (e) { /* ignore */ }
+  els.bulkSearch.hidden = names.length === 0;
+}
+
+function loadKioskNames() {
+  try { return JSON.parse(localStorage.getItem(KIOSK_NAMES_KEY)) || []; } catch (e) { return []; }
+}
+
+// Reveal the button on load if a previous session already cached some names.
+if (loadKioskNames().length) els.bulkSearch.hidden = false;
+
+els.bulkSearch.addEventListener("click", () => {
+  const names = loadKioskNames();
+  if (!names.length) {
+    setStatus("No Rares/Mythics cached yet — generate a PDF first.", "err");
+    return;
+  }
+  const url = MULTI_SEARCH_URL + "?query=" + encodeURIComponent(names.join("\n"));
+  window.open(url, "_blank", "noopener");
 });
