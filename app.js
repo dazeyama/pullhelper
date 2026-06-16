@@ -561,7 +561,7 @@ els.send.addEventListener("click", async () => {
     to,
     name: els.name.value.trim(),
     subject: `Decklist from ${els.name.value.trim()}`,
-    body: "Attached PDF for easy printing",
+    body: "Attached PDF for easy printing\n\nMade with pullhelper — https://dazeyama.github.io/pullhelper/",
     filename: safeFilename(els.name.value.trim()),
     pdf_base64: base64,
   };
