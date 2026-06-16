@@ -468,7 +468,11 @@ function buildPdf(name, rows) {
   // Colorless > Multicolor > Land (unknown/not-found last).
   const COLOR_ORDER = { White: 0, Blue: 1, Black: 2, Red: 3, Green: 4, Colorless: 5, Multicolor: 6, Land: 7 };
   const colorRank = (r) => (COLOR_ORDER[r.color.label] ?? 99);
-  const groupB = rows.filter((r) => !isHighValue(r)).sort((a, b) => colorRank(a) - colorRank(b));
+  const groupB = rows.filter((r) => !isHighValue(r)).sort((a, b) => {
+    const byColor = colorRank(a) - colorRank(b);
+    if (byColor !== 0) return byColor;
+    return (a.priceNum ?? Infinity) - (b.priceNum ?? Infinity); // within a color: cheapest first
+  });
   const sub = name ? `Decklist — ${name}` : "";
 
   renderSection(doc, "Try Kiosk", sub, groupA, true);
