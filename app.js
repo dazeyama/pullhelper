@@ -276,7 +276,7 @@ function buildRow(entry, card, printsByOracle) {
     rarity,
     rareMythic,
     priceNum: usd,
-    price: usd !== null ? "$" + usd.toFixed(2) : "—",
+    price: usd !== null ? "~$" + usd.toFixed(2) : "—",
     setList: boosterNames,
     sets: boosterNames.length ? boosterNames.join(", ") : "[Supplementary set only]",
   };
@@ -333,7 +333,7 @@ function isHighValue(r) {
 // "Try Kiosk" pricing: drop the cents off the number and add $1.
 function kioskPrice(priceNum) {
   if (priceNum === null || priceNum === undefined) return "—";
-  return "$" + (Math.floor(priceNum) + 1);
+  return "~$" + (Math.floor(priceNum) + 1);
 }
 
 const SETS_FONT = 7;     // pt, for the set list
