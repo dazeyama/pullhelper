@@ -1,13 +1,13 @@
 :root {
-  --bg: #0f1115;
-  --card-bg: #1a1d24;
-  --card-border: #2a2f3a;
-  --text: #e8eaed;
-  --muted: #9aa0aa;
-  --accent: #6c8cff;
-  --accent-hover: #5577ff;
-  --input-bg: #12151b;
-  --input-border: #333a46;
+  --bg: #1a1922;            /* deep charcoal (faint purple tint) */
+  --card-bg: #242230;       /* charcoal card */
+  --card-border: #3b3556;   /* muted purple border */
+  --text: #ededf2;
+  --muted: #a6a0bd;         /* lavender-grey */
+  --accent: #6e5fb8;        /* purple */
+  --accent-hover: #8071cf;
+  --input-bg: #1c1b25;
+  --input-border: #443e60;
   --ok: #4caf7d;
   --err: #e0625e;
   --radius: 12px;
@@ -18,7 +18,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(1200px 600px at 50% -10%, #1c2330, var(--bg));
+  background: radial-gradient(1200px 600px at 50% -10%, #2d2548, var(--bg));
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   display: flex;
@@ -35,6 +35,13 @@ body {
   border-radius: var(--radius);
   padding: 28px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.logo {
+  display: block;
+  width: 116px;
+  height: auto;
+  margin: 0 auto 14px;
 }
 
 header { margin-bottom: 20px; }
@@ -101,7 +108,7 @@ input:focus,
 textarea:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(108, 140, 255, 0.18);
+  box-shadow: 0 0 0 3px rgba(110, 95, 184, 0.25);
 }
 
 .buttons {
@@ -117,13 +124,13 @@ textarea:focus {
   font-weight: 600;
   border-radius: 8px;
   border: 1px solid var(--input-border);
-  background: #232833;
+  background: #2c2a3a;
   color: var(--text);
   cursor: pointer;
   transition: background 0.15s, transform 0.05s, border-color 0.15s;
 }
 
-.btn:hover { background: #2b313e; }
+.btn:hover { background: #36334a; }
 .btn:active { transform: translateY(1px); }
 
 .btn.primary {
