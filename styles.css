@@ -15,6 +15,12 @@
 
 * { box-sizing: border-box; }
 
+/* Paint the root so the charcoal fills the whole canvas (incl. overscroll /
+   any area below the content) — no white gap when scrolling on mobile. */
+html {
+  background-color: var(--bg);
+}
+
 body {
   margin: 0;
   min-height: 100vh;
