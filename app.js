@@ -404,6 +404,10 @@ function renderSection(doc, title, subtitle, sectionRows, kioskPricing) {
       const row = sectionRows[data.row.index];
       if (!row) return;
       data.cell.styles.fillColor = row.color.fill;
+      // On the "I'll help you find..." sheet, highlight sub-$1 prices yellow.
+      if (!kioskPricing && data.column.index === 4 && row.priceNum !== null && row.priceNum < 1) {
+        data.cell.styles.fillColor = [255, 240, 130];
+      }
       // Reserve height for the 2-column set list drawn in didDrawCell.
       if (data.column.index === 5) {
         const n = (row.setList || []).length;
