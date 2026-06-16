@@ -444,8 +444,13 @@ function buildPdf(name, rows) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "letter" });
 
-  const groupA = rows.filter(isHighValue);
-  const groupB = rows.filter((r) => !isHighValue(r));
+  // Try Kiosk: most expensive first.
+  const groupA = rows.filter(isHighValue).sort((a, b) => b.priceNum - a.priceNum);
+  // I'll help you find...: by color, White > Blue > Black > Red > Green >
+  // Colorless > Multicolor > Land (unknown/not-found last).
+  const COLOR_ORDER = { White: 0, Blue: 1, Black: 2, Red: 3, Green: 4, Colorless: 5, Multicolor: 6, Land: 7 };
+  const colorRank = (r) => (COLOR_ORDER[r.color.label] ?? 99);
+  const groupB = rows.filter((r) => !isHighValue(r)).sort((a, b) => colorRank(a) - colorRank(b));
   const sub = name ? `Decklist — ${name}` : "";
 
   renderSection(doc, "Try Kiosk", sub, groupA, true);
