@@ -380,7 +380,15 @@ function renderSection(doc, title, subtitle, sectionRows, kioskPricing) {
     body,
     startY: tableTop,
     margin: { left: 14, right: 14 },
-    styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak", valign: "top", textColor: [20, 20, 20] },
+    styles: {
+      fontSize: 8,
+      cellPadding: 2,
+      overflow: "linebreak",
+      valign: "top",
+      textColor: [20, 20, 20],
+      lineWidth: 0.2,
+      lineColor: [60, 60, 60],
+    },
     headStyles: { fillColor: [40, 44, 52], textColor: [255, 255, 255], fontStyle: "bold" },
     columnStyles: {
       0: { cellWidth: 18 },
