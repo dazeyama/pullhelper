@@ -526,7 +526,7 @@ els.download.addEventListener("click", async () => {
 });
 
 // ---- Button: Send ---------------------------------------------------------
-const SEND_COOLDOWN_MS = 30 * 60 * 1000; // one send per 30 minutes
+const SEND_COOLDOWN_MS = 1 * 60 * 1000; // one send per minute
 const LAST_SEND_KEY = "PH_LAST_SEND";
 
 els.send.addEventListener("click", async () => {
@@ -548,7 +548,7 @@ els.send.addEventListener("click", async () => {
   const remaining = SEND_COOLDOWN_MS - (Date.now() - lastSend);
   if (lastSend && remaining > 0) {
     const mins = Math.ceil(remaining / 60000);
-    setStatus(`Send is limited to once every 30 minutes — try again in ${mins} minute${mins === 1 ? "" : "s"}.`, "err");
+    setStatus(`Send is limited to once per minute — try again in ${mins} minute${mins === 1 ? "" : "s"}.`, "err");
     return;
   }
 
