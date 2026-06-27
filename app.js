@@ -324,11 +324,34 @@ async function gatherRows(entries) {
 }
 
 // ---- PDF generation -------------------------------------------------------
-// A card is "high value" if it's a Rare/Mythic priced strictly above $2.
-// Everything else (commons, uncommons, and cheap/unpriced rares & mythics)
-// goes in the second document.
+// "Try Kiosk" = Rare/Mythic priced above $2.50. Everything else (commons,
+// uncommons, and cheaper/unpriced rares & mythics) goes on the find page,
+// which is split into bins below.
 function isHighValue(r) {
-  return r.rareMythic && r.priceNum !== null && r.priceNum > 2;
+  return r.rareMythic && r.priceNum !== null && r.priceNum > 2.5;
+}
+
+// Numeric price with null/undefined treated as 0 (for bin thresholds).
+function priceOf(r) {
+  return r.priceNum ?? 0;
+}
+
+// Find-page bin definitions (each find-page card lands in exactly one).
+const FIND_BINS = [
+  { title: "$1 Rare Bin", test: (r) => r.rareMythic && priceOf(r) <= 1.5 },
+  { title: "$2 Rare Bin", test: (r) => r.rareMythic && priceOf(r) > 1.5 },
+  { title: "Commons by set", test: (r) => !r.rareMythic && priceOf(r) < 1.35 },
+  { title: "Commons by color in the back", test: (r) => !r.rareMythic && priceOf(r) >= 1.35 },
+];
+
+// Sort within a bin: WUBRG, then Multicolor, Artifact (colorless), Land;
+// alphabetical by name as a tiebreak.
+const BIN_COLOR_ORDER = { White: 0, Blue: 1, Black: 2, Red: 3, Green: 4, Multicolor: 5, Colorless: 6, Land: 7 };
+function binSort(a, b) {
+  const ca = BIN_COLOR_ORDER[a.color.label] ?? 99;
+  const cb = BIN_COLOR_ORDER[b.color.label] ?? 99;
+  if (ca !== cb) return ca - cb;
+  return a.name.localeCompare(b.name);
 }
 
 // "Try Kiosk" pricing: drop the cents off the number and add $1.
@@ -346,9 +369,8 @@ function findPrice(priceNum) {
 const SETS_FONT = 7;     // pt, for the set list
 const SETS_LINE_H = 3.0; // mm, vertical spacing between set lines
 
-// Renders one titled section (one "document") onto the current page.
-// kioskPricing=true rounds prices up to whole dollars + $1 (Try Kiosk sheet).
-function renderSection(doc, title, subtitle, sectionRows, kioskPricing) {
+// Draws the big page title + optional subtitle. Returns the Y to start content.
+function drawPageTitle(doc, title, subtitle) {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
   doc.setTextColor(20, 20, 20);
@@ -363,16 +385,12 @@ function renderSection(doc, title, subtitle, sectionRows, kioskPricing) {
     doc.setTextColor(20, 20, 20);
     tableTop = 27;
   }
+  return tableTop;
+}
 
-  if (sectionRows.length === 0) {
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(11);
-    doc.setTextColor(120, 120, 120);
-    doc.text("None.", 14, tableTop + 4);
-    doc.setTextColor(20, 20, 20);
-    return;
-  }
-
+// Draws the card table starting at startY; returns the Y just below it.
+// kioskPricing=true rounds prices up to whole dollars + $1 (Try Kiosk sheet).
+function drawCardTable(doc, sectionRows, startY, kioskPricing) {
   const body = sectionRows.map((r) => [
     r.color.label,
     r.qty,
@@ -385,7 +403,7 @@ function renderSection(doc, title, subtitle, sectionRows, kioskPricing) {
   doc.autoTable({
     head: [["Color", "Qty", "Card Name", "Rarity", "Price (USD)", "Printed In Sets"]],
     body,
-    startY: tableTop,
+    startY,
     margin: { left: 14, right: 14 },
     rowPageBreak: "avoid", // keep each row whole; move it to the next page rather than splitting
     styles: {
@@ -462,29 +480,69 @@ function renderSection(doc, title, subtitle, sectionRows, kioskPricing) {
       }
     },
   });
+
+  return doc.lastAutoTable.finalY;
 }
 
-// Builds one combined PDF: high-value Rares/Mythics first, everything else next.
+// Renders a single-table titled page (used for the Try Kiosk sheet).
+function renderSection(doc, title, subtitle, sectionRows, kioskPricing) {
+  const tableTop = drawPageTitle(doc, title, subtitle);
+  if (sectionRows.length === 0) {
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(11);
+    doc.setTextColor(120, 120, 120);
+    doc.text("None.", 14, tableTop + 4);
+    doc.setTextColor(20, 20, 20);
+    return;
+  }
+  drawCardTable(doc, sectionRows, tableTop, kioskPricing);
+}
+
+// Renders the "I'll help you find..." page as the four labeled bins, each
+// sorted WUBRG > Multicolor > Artifact > Land, then alphabetically.
+function renderFindPage(doc, subtitle, findRows) {
+  let y = drawPageTitle(doc, "I'll help you find...", subtitle);
+  const pageH = doc.internal.pageSize.getHeight();
+
+  for (const bin of FIND_BINS) {
+    const binRows = findRows.filter(bin.test).sort(binSort);
+
+    // Don't orphan a bin heading at the very bottom of a page.
+    if (y > pageH - 36) {
+      doc.addPage();
+      y = 16;
+    }
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(20, 20, 20);
+    doc.text(bin.title, 14, y + 5);
+
+    if (binRows.length) {
+      y = drawCardTable(doc, binRows, y + 8, false);
+    } else {
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(10);
+      doc.setTextColor(120, 120, 120);
+      doc.text("(none)", 16, y + 11);
+      doc.setTextColor(20, 20, 20);
+      y += 13;
+    }
+    y += 6; // gap before the next bin
+  }
+}
+
+// Builds the combined PDF: Try Kiosk page, then the binned find page.
 function buildPdf(name, rows) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "letter" });
-
-  // Try Kiosk: most expensive first.
-  const groupA = rows.filter(isHighValue).sort((a, b) => b.priceNum - a.priceNum);
-  // I'll help you find...: by color, White > Blue > Black > Red > Green >
-  // Colorless > Multicolor > Land (unknown/not-found last).
-  const COLOR_ORDER = { White: 0, Blue: 1, Black: 2, Red: 3, Green: 4, Colorless: 5, Multicolor: 6, Land: 7 };
-  const colorRank = (r) => (COLOR_ORDER[r.color.label] ?? 99);
-  const groupB = rows.filter((r) => !isHighValue(r)).sort((a, b) => {
-    const byColor = colorRank(a) - colorRank(b);
-    if (byColor !== 0) return byColor;
-    return (a.priceNum ?? Infinity) - (b.priceNum ?? Infinity); // within a color: cheapest first
-  });
   const sub = name ? `Decklist — ${name}` : "";
 
-  renderSection(doc, "Try Kiosk", sub, groupA, true);
+  const kiosk = rows.filter(isHighValue).sort((a, b) => b.priceNum - a.priceNum);
+  renderSection(doc, "Try Kiosk", sub, kiosk, true);
+
   doc.addPage();
-  renderSection(doc, "I'll help you find...", sub, groupB, false);
+  renderFindPage(doc, sub, rows.filter((r) => !isHighValue(r)));
 
   return doc;
 }
