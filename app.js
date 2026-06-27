@@ -538,7 +538,7 @@ function buildPdf(name, rows) {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "letter" });
   const sub = name ? `Decklist — ${name}` : "";
 
-  const kiosk = rows.filter(isHighValue).sort((a, b) => b.priceNum - a.priceNum);
+  const kiosk = rows.filter(isHighValue).sort(binSort);
   renderSection(doc, "Try Kiosk", sub, kiosk, true);
 
   doc.addPage();
