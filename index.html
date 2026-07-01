@@ -1,55 +1,67 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>pullhelper — Decklist PDF</title>
-  <link rel="stylesheet" href="styles.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Decklist to PDF</title>
+<style>
+input, textarea { font-size: 16px; }
+textarea { width: 98%; }
+</style>
 </head>
 <body>
-  <main class="card">
-    <img src="logo.png" alt="Players' Union — Worker Owned" class="logo" onerror="this.style.display='none'" />
-    <header>
-      <p class="sub">Paste a decklist &rarr; get a printable PDF with colors, prices &amp; printings.</p>
-    </header>
 
-    <label class="field">
-      <span class="field-label">Your name</span>
-      <input id="name" type="text" placeholder="e.g. Daisy" autocomplete="name" />
-    </label>
+<img src="logo.png" alt="Players Union Worker Owned" width="150" onerror="this.style.display='none'">
 
-    <label class="field decklist-field">
-      <span class="field-label">Decklist <small>(one card per line, optional quantity prefix like <code>4 Lightning Bolt</code>)</small></span>
-      <textarea id="decklist" rows="14" spellcheck="false" placeholder="4 Lightning Bolt&#10;2 Counterspell&#10;1 Sol Ring&#10;Llanowar Elves"></textarea>
-    </label>
+<h2>Decklist to PDF</h2>
 
-    <label class="field">
-      <span class="field-label">Send to email</span>
-      <input id="email" type="email" autocomplete="email" />
-    </label>
+<p>Paste your Magic: The Gathering decklist below, one card per line (you can put a
+quantity in front, like "4 Lightning Bolt"). Then press Download PDF to save it, or
+Send PDF to email it. The PDF lists each card's color, quantity, rarity, price and
+the sets it was printed in.</p>
 
-    <div class="buttons">
-      <button id="downloadBtn" class="btn primary">Download PDF</button>
-      <button id="sendBtn" class="btn">Send PDF</button>
-    </div>
+<hr>
 
-    <button id="bulkSearchBtn" class="btn bulk" hidden>Bulk Search Rares/Mythics</button>
+<p>
+Your name:<br>
+<input id="name" type="text" size="30">
+</p>
 
-    <div id="status" class="status" role="status" aria-live="polite"></div>
-    <div class="progress-wrap" id="progressWrap" hidden>
-      <div class="progress-bar" id="progressBar"></div>
-    </div>
-  </main>
+<p>
+Decklist (one card per line):<br>
+<textarea id="decklist" rows="14" spellcheck="false" placeholder="4 Lightning Bolt&#10;2 Counterspell&#10;1 Sol Ring&#10;Llanowar Elves"></textarea>
+</p>
 
-  <footer class="foot">
-    Card data &amp; prices from <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>.
-    Not affiliated with Wizards of the Coast.
-  </footer>
+<p>
+Send to email:<br>
+<input id="email" type="email" size="30">
+</p>
 
-  <!-- jsPDF + autotable for client-side PDF generation -->
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
-  <script src="config.js"></script>
-  <script src="app.js"></script>
+<p>
+<button id="downloadBtn">Download PDF</button>
+&nbsp;&nbsp;
+<button id="sendBtn">Send PDF</button>
+</p>
+
+<p>
+<button id="bulkSearchBtn" hidden>Bulk Search Rares/Mythics</button>
+</p>
+
+<p id="status"></p>
+
+<div id="progressWrap" hidden style="border:1px solid #000000; width:98%; height:14px;">
+<div id="progressBar" style="height:14px; background:#666666; width:0%;"></div>
+</div>
+
+<hr>
+
+<p><small>Card data and prices from <a href="https://scryfall.com">Scryfall</a>.
+Not affiliated with Wizards of the Coast.</small></p>
+
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+
 </body>
 </html>
